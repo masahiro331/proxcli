@@ -1,5 +1,6 @@
 var http = require('http');
 
+console.log("Start Target Server... \nPort 9999 listening\n")
 http.createServer(function (req, res) {
     var postData = "";
     req.on("data", function(chunk) {
