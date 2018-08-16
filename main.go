@@ -6,31 +6,27 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
+
+	"github.com/rs/xid"
+)
+
+var (
+	Guid           = xid.New()
+	ProxcliDir     = ""
+	GuidProxcliDir = ""
+	SequenceId     = 0
 )
 
 type RequestResponse struct {
 	Id       int
-	Request  *http.Request
-	Response *http.Response
+	TempDir  string
+	Request  http.Request
+	Response http.Response
 }
-
-// type Request struct {
-// 	Method      string
-// 	Scheme      string
-// 	Hostname    string
-// 	Port        int
-// 	Path        string
-// 	QueryString string
-// 	Header      string
-// 	Body        string
-// }
-// type Response struct {
-// 	Status string
-// 	Header string
-// 	Body   string
-// }
-// func NewRequestResponse struct { }
 
 type Proxy struct {
 	port    string
@@ -52,27 +48,37 @@ func NewProxy(port string, keyfile string) *Proxy {
 	}
 }
 
+func NewRequestResponse() *RequestResponse {
+	SequenceId++
+	r := new(RequestResponse)
+	r.Id = SequenceId
+	r.TempDir = fmt.Sprintf("%s/%020d", GuidProxcliDir, SequenceId)
+	if err := os.Mkdir(r.TempDir, 0755); err != nil {
+		panic(err)
+	}
+
+	return r
+}
+
 func (p *Proxy) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		client := &http.Client{}
-		requestResponse := new(RequestResponse)
-		fmt.Printf("(pointer 1): %s\n", *r)
-		requestResponse.Request = r
-		fmt.Printf("(pointer 2): %s\n", *r)
-		fmt.Printf("(pointer 3): %s\n", *requestResponse.Request)
+		requestResponse := NewRequestResponse()
+		requestResponse.Request = *r
 
+		if err := requestResponse.RequestStep(); err != nil {
+			panic(err)
+		}
 		// RequestStep
-		r = RequestStep(requestResponse.Request)
-		fmt.Printf("(pointer 4): %s\n", *r)
-		fmt.Printf("(pointer 5): %s\n", *requestResponse.Request)
-		bbody, err := ioutil.ReadAll(r.Body)
+		newRequest := RequestStep(requestResponse.Request)
+		bbody, err := ioutil.ReadAll(newRequest.Body)
 		if err != nil {
 			log.Print(err)
 		}
 		sbody := string(bbody)
 
 		// Proxy
-		req, err := http.NewRequest(r.Method, fmt.Sprintf("http://localhost:9999%s", r.URL.Path), strings.NewReader(sbody))
+		req, err := http.NewRequest(newRequest.Method, fmt.Sprintf("http://localhost:9999%s", newRequest.URL.Path), strings.NewReader(sbody))
 		if err != nil {
 			log.Print(err)
 		}
@@ -84,8 +90,9 @@ func (p *Proxy) Handler() http.Handler {
 		defer res.Body.Close()
 
 		// ResponseStep
-		res = ResponseStep(res)
-		rbody, err := ioutil.ReadAll(res.Body)
+		requestResponse.Response = *res
+		newResponse := ResponseStep(requestResponse.Response)
+		rbody, err := ioutil.ReadAll(newResponse.Body)
 		if err != nil {
 			log.Print(err)
 		}
@@ -95,6 +102,7 @@ func (p *Proxy) Handler() http.Handler {
 		p.ServeHTTP(w, r)
 	})
 }
+
 func dropCR(data []byte) []byte {
 	if len(data) > 0 && data[len(data)-1] == '\r' {
 		return data[0 : len(data)-1]
@@ -102,7 +110,22 @@ func dropCR(data []byte) []byte {
 	return data
 }
 
-func RequestStep(r *http.Request) *http.Request {
+func (r *RequestResponse) RequestStep() error {
+	file := filepath.Join(r.TempDir, "Request.pcl")
+	_, err := os.Stat(file)
+	if err == nil {
+		return err
+	}
+	f, err := os.Create(file)
+	if err != nil {
+		return err
+	}
+	log.Print(f)
+
+	return nil
+}
+
+func RequestStep(r http.Request) *http.Request {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Print(err)
@@ -114,14 +137,13 @@ func RequestStep(r *http.Request) *http.Request {
 	// 	text := scanner.Text()
 	// 	log.Println(text)
 	// }
-	// log.Print(sbody)
 
 	r.Body = &ClosingBuffer{bytes.NewBufferString(sbody)}
 	r.Body.Close()
-	return r
+	return &r
 }
 
-func ResponseStep(r *http.Response) *http.Response {
+func ResponseStep(r http.Response) *http.Response {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Print(err)
@@ -132,7 +154,24 @@ func ResponseStep(r *http.Response) *http.Response {
 
 	r.Body = &ClosingBuffer{bytes.NewBufferString(sbody)}
 	r.Body.Close()
-	return r
+	return &r
+}
+
+func load() {
+
+}
+
+func init() {
+	userinfo, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+	ProxcliDir = fmt.Sprintf("%s/.proxcli", userinfo.HomeDir)
+	GuidProxcliDir = fmt.Sprintf("%s/tmp/%s", ProxcliDir, Guid.String())
+	fmt.Println()
+	if err := os.MkdirAll(fmt.Sprintf("%s/tmp/%s", ProxcliDir, Guid.String()), 0755); err != nil {
+		panic(err)
+	}
 }
 
 func main() {
