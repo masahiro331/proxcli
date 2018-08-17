@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/user"
 
 	"github.com/rs/xid"
 )
@@ -18,14 +20,34 @@ var (
 )
 
 func run(sslmitm bool, port int) error {
-	p := NewProxy(false, port)
+	p := NewProxy(sslmitm, port)
 	return http.ListenAndServe(fmt.Sprintf("localhost:%d", port), p)
 }
 
 func main() {
-	if err := run(false, 8888); err != nil {
+	if err := run(true, 8888); err != nil {
 		log.Print(err)
 	}
+}
+
+func init() {
+	userinfo, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+	ProxcliDir = fmt.Sprintf("%s/.proxcli", userinfo.HomeDir)
+	if err := os.Mkdir(ProxcliDir, 0755); err != nil {
+		log.Println(err)
+	}
+	if err := os.Mkdir(fmt.Sprintf("%s/ssl", ProxcliDir), 0755); err != nil {
+		log.Println(err)
+	}
+	GuidProxcliDir = fmt.Sprintf("%s/tmp/%s", ProxcliDir, Guid.String())
+	if err := os.MkdirAll(fmt.Sprintf("%s/tmp/%s", ProxcliDir, Guid.String()), 0755); err != nil {
+		panic(err)
+	}
+	Keyfile = ProxcliDir + "/ssl/key.pem"
+	Certfile = ProxcliDir + "/ssl/cert.pem"
 }
 
 // import (
@@ -258,26 +280,7 @@ func main() {
 // 	cmd.Stdin = os.Stdin
 // 	return cmd.Run()
 // }
-//
-// func init() {
-//
-// 	userinfo, err := user.Current()
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	ProxcliDir = fmt.Sprintf("%s/.proxcli", userinfo.HomeDir)
-// 	if err := os.Mkdir(ProxcliDir, 0755); err != nil {
-// 		log.Println(err)
-// 	}
-// 	if err := os.Mkdir(fmt.Sprintf("%s/ssl", ProxcliDir), 0755); err != nil {
-// 		log.Println(err)
-// 	}
-// 	GuidProxcliDir = fmt.Sprintf("%s/tmp/%s", ProxcliDir, Guid.String())
-// 	if err := os.MkdirAll(fmt.Sprintf("%s/tmp/%s", ProxcliDir, Guid.String()), 0755); err != nil {
-// 		panic(err)
-// 	}
-// }
-//
+
 // func GenerateCrt() error {
 // 	Keyfile = ProxcliDir + "/ssl/key.pem"
 // 	Certfile = ProxcliDir + "/ssl/cert.pem"
