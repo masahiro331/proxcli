@@ -59,10 +59,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p.TransportHTTPRequest(w, r)
+	p.ProxyHTTPRequest(w, r)
 }
 
-func (p *Proxy) TransportHTTPRequest(w http.ResponseWriter, r *http.Request) {
+func (p *Proxy) ProxyHTTPRequest(w http.ResponseWriter, r *http.Request) {
 	rpair := NewRequestResponsePair()
 	rpair.SetRequest(*r)
 
@@ -90,10 +90,10 @@ func (p *Proxy) MitmRequest(w http.ResponseWriter, r *http.Request) {
 	conn.Write([]byte("HTTP/1.0 200 OK\r\n\r\n"))
 
 	// launch goroutine to transporting request with mitm sniffing
-	go p.TransportHTTPSRequest(w, r, conn)
+	go p.ProxyHTTPSRequest(w, r, conn)
 }
 
-func (p *Proxy) TransportHTTPSRequest(w http.ResponseWriter, r *http.Request, conn net.Conn) {
+func (p *Proxy) ProxyHTTPSRequest(w http.ResponseWriter, r *http.Request, conn net.Conn) {
 	h := r.Host
 	tlsConfig, err := p.generateTLSConfig(h)
 	if err != nil {
@@ -256,7 +256,7 @@ func (p *Proxy) signHostCert(hosts []string) (*tls.Certificate, error) {
 		SerialNumber:       &serial,
 		Issuer:             x509ca.Subject,
 		Subject: pkix.Name{
-			Organization: []string{"Sample MiTM Proxy untrusted CA"},
+			Organization: []string{"Masahiro"},
 			CommonName:   hosts[0],
 		},
 		NotBefore:             start,
