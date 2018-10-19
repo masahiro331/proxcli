@@ -1,4 +1,4 @@
-package main
+package proxy
 
 import (
 	"errors"
@@ -13,6 +13,10 @@ type RequestResponsePair struct {
 	Request  http.Request
 	Response http.Response
 }
+
+var (
+	SequenceId = 0
+)
 
 func NewRequestResponsePair() *RequestResponsePair {
 	SequenceId++

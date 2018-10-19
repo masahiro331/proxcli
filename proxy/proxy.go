@@ -1,4 +1,4 @@
-package main
+package proxy
 
 import (
 	"bufio"
@@ -35,7 +35,7 @@ type signingCertificate struct {
 	privateKey  crypto.PrivateKey
 }
 
-func NewProxy(sslmitm bool, port int) *Proxy {
+func NewProxy(sslmitm bool, port int, Certfile, Keyfile string) *Proxy {
 	p := &Proxy{
 		sslmitm: sslmitm,
 		transport: &http.Transport{
@@ -67,7 +67,7 @@ func (p *Proxy) ProxyHTTPRequest(w http.ResponseWriter, r *http.Request) {
 	rpair.SetRequest(*r)
 
 	dump, _ := rpair.DumpRequest()
-	fmt.Println(dump)
+	fmt.Println(string(dump))
 
 	res, err := p.transport.RoundTrip(&rpair.Request)
 	if err != nil {
@@ -79,7 +79,7 @@ func (p *Proxy) ProxyHTTPRequest(w http.ResponseWriter, r *http.Request) {
 	rpair.SetResponse(*res)
 
 	dump, _ = rpair.DumpResponse()
-	fmt.Println(dump)
+	fmt.Println(string(dump))
 	p.WriteResponse(w, &rpair.Response)
 
 	return
@@ -132,7 +132,7 @@ func (p *Proxy) ProxyHTTPSRequest(w http.ResponseWriter, r *http.Request, conn n
 
 		rpair.SetRequest(*req)
 		dump, _ := rpair.DumpRequest()
-		fmt.Println(dump)
+		fmt.Println(string(dump))
 		defer rpair.Request.Body.Close()
 
 		res, err := p.transport.RoundTrip(&rpair.Request)
@@ -148,7 +148,7 @@ func (p *Proxy) ProxyHTTPSRequest(w http.ResponseWriter, r *http.Request, conn n
 		rpair.SetResponse(*res)
 
 		dump, _ = rpair.DumpResponse()
-		fmt.Println(dump)
+		fmt.Println(string(dump))
 		defer rpair.Response.Body.Close()
 
 		rpair.Response.Write(tlsConn)

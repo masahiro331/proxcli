@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 
+	"github.com/masahiro331/proxcli/proxy"
 	"github.com/rs/xid"
 )
 
@@ -16,11 +17,10 @@ var (
 	Keyfile        = ""
 	Certfile       = ""
 	GuidProxcliDir = ""
-	SequenceId     = 0
 )
 
 func run(sslmitm bool, port int) error {
-	p := NewProxy(sslmitm, port)
+	p := proxy.NewProxy(sslmitm, port, Certfile, Keyfile)
 	return http.ListenAndServe(fmt.Sprintf("localhost:%d", port), p)
 }
 
