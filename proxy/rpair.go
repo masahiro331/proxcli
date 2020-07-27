@@ -53,3 +53,10 @@ func (rpair *RequestResponsePair) DumpResponse() (string, error) {
 
 	return string(dump), nil
 }
+
+func (rpair *RequestResponsePair) GetRequestBody() (string, error) {
+	if &rpair.Request == nil {
+		return "", errors.New("Request is Null")
+	}
+
+}

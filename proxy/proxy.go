@@ -66,8 +66,8 @@ func (p *Proxy) ProxyHTTPRequest(w http.ResponseWriter, r *http.Request) {
 	rpair := NewRequestResponsePair()
 	rpair.SetRequest(*r)
 
-	dump, _ := rpair.DumpRequest()
-	fmt.Println(string(dump))
+	// dump, _ := rpair.DumpRequest()
+	// fmt.Println(string(dump))
 
 	res, err := p.transport.RoundTrip(&rpair.Request)
 	if err != nil {
@@ -78,8 +78,8 @@ func (p *Proxy) ProxyHTTPRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	rpair.SetResponse(*res)
 
-	dump, _ = rpair.DumpResponse()
-	fmt.Println(string(dump))
+	// dump, _ = rpair.DumpResponse()
+	// fmt.Println(string(dump))
 	p.WriteResponse(w, &rpair.Response)
 
 	return
@@ -169,8 +169,6 @@ func (p *Proxy) RelayHTTPSRequest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
-	// conn := hijackConnect(w)
-	// conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
 	conn := ResponseConnect(w)
 
 	go transfer(dst, conn)
